@@ -98,6 +98,24 @@ object UsageRepo {
         return out
     }
 
+    /** Número de aperturas de hoy por paquete (cambios reales de app en primer plano). */
+    fun opensToday(c: Context): Map<String, Int> {
+        val events = usm(c).queryEvents(startOfDay(0), System.currentTimeMillis())
+        val e = UsageEvents.Event()
+        val map = HashMap<String, Int>()
+        var prev: String? = null
+        while (events.hasNextEvent()) {
+            events.getNextEvent(e)
+            if (e.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                if (e.packageName != prev) {
+                    map[e.packageName] = (map[e.packageName] ?: 0) + 1
+                }
+                prev = e.packageName
+            }
+        }
+        return map
+    }
+
     /** Último paquete que pasó a primer plano en la ventana indicada. */
     fun foregroundPackage(c: Context, lookbackMs: Long = 60_000): String? {
         val now = System.currentTimeMillis()

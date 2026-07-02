@@ -12,6 +12,7 @@ class AppsActivity : Activity() {
     private lateinit var listBox: LinearLayout
     private lateinit var search: EditText
     private var all: List<AppInfo> = emptyList()
+    private var showHidden = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,9 +63,12 @@ class AppsActivity : Activity() {
         val favs = Prefs.favorites(this)
         val dist = Prefs.distracting(this)
         val blocked = Prefs.blocked(this)
+        val hidden = Prefs.hidden(this)
         val limits = Prefs.limits(this)
 
-        val shown = if (q.isEmpty()) all else all.filter { q in it.label.lowercase() }
+        var shown = if (showHidden) all else all.filter { it.pkg !in hidden }
+        if (q.isNotEmpty()) shown = shown.filter { q in it.label.lowercase() }
+
         for (app in shown) {
             val row = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
             row.setPadding(0, Ui.dp(this, 10), 0, Ui.dp(this, 10))
@@ -75,6 +79,7 @@ class AppsActivity : Activity() {
             if (app.pkg in favs) meta.add("favorita")
             if (app.pkg in dist) meta.add("distractora")
             if (app.pkg in blocked) meta.add("bloqueada")
+            if (app.pkg in hidden) meta.add("oculta")
             limits[app.pkg]?.let { meta.add("límite $it min") }
             if (meta.isNotEmpty()) {
                 row.addView(Ui.text(this, meta.joinToString(" · "), 12f, Ui.GRAY))
@@ -86,6 +91,21 @@ class AppsActivity : Activity() {
                 true
             }
             listBox.addView(row)
+        }
+
+        val hiddenCount = all.count { it.pkg in hidden }
+        if (hiddenCount > 0) {
+            val toggle = Ui.text(
+                this,
+                if (showHidden) "dejar de mostrar ocultas" else "mostrar ocultas ($hiddenCount)",
+                13f, Ui.GRAY
+            )
+            toggle.setPadding(0, Ui.dp(this, 16), 0, Ui.dp(this, 16))
+            toggle.setOnClickListener {
+                showHidden = !showHidden
+                render()
+            }
+            listBox.addView(toggle)
         }
     }
 }

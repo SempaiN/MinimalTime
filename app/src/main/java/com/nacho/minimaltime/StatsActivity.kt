@@ -65,9 +65,10 @@ class StatsActivity : Activity() {
                 val today = UsageRepo.todayUsage(this).filterKeys { it in set }
                 val total = today.values.sum()
                 val unlocks = UsageRepo.unlocksToday(this)
+                val opens = UsageRepo.opensToday(this)
                 val week = UsageRepo.weekTotals(this, set)
 
-                runOnUiThread { render(total, unlocks, week, today, labels) }
+                runOnUiThread { render(total, unlocks, week, today, opens, labels) }
             } catch (_: Exception) {
                 runOnUiThread { loading.text = "no se pudieron leer los datos de uso" }
             }
@@ -79,6 +80,7 @@ class StatsActivity : Activity() {
         unlocks: Int,
         week: LongArray,
         today: Map<String, Long>,
+        opens: Map<String, Int>,
         labels: Map<String, String>
     ) {
         root.removeAllViews()
@@ -87,6 +89,15 @@ class StatsActivity : Activity() {
 
         root.addView(Ui.text(this, Ui.fmt(total), 46f))
         root.addView(Ui.text(this, "hoy", 14f, Ui.GRAY))
+
+        val goal = Prefs.dailyGoalMin(this)
+        if (goal > 0) {
+            val pct = (100L * total / (goal * 60_000L)).toInt()
+            val txt = if (pct <= 100) "objetivo: ${Ui.fmt(goal * 60_000L)} · $pct %"
+            else "objetivo de ${Ui.fmt(goal * 60_000L)} superado ($pct %)"
+            root.addView(Ui.space(this, 6))
+            root.addView(Ui.text(this, txt, 13f, Ui.GRAY))
+        }
 
         val yesterday = week[5]
         if (yesterday > 0) {
@@ -129,7 +140,8 @@ class StatsActivity : Activity() {
             val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
             val name = Ui.text(this, labels[pkg] ?: pkg, 16f)
             line.addView(name, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
-            val time = Ui.text(this, Ui.fmt(ms), 13f, Ui.GRAY)
+            val n = opens[pkg] ?: 0
+            val time = Ui.text(this, Ui.fmt(ms) + if (n > 0) "  ·  $n×" else "", 13f, Ui.GRAY)
             time.gravity = Gravity.END
             line.addView(time)
             row.addView(line)
